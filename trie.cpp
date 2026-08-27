@@ -36,6 +36,26 @@ private:
         delete node;
     }
 
+
+    void imprimirRecursivamente(trieNo* atual,std::string palavraAcumulada){
+        if (atual == nullptr){
+            return;
+        }
+
+        if(atual->fim_palavra){
+            std::cout << "." << palavraAcumulada << std::endl;
+        }
+
+        for(int i=0;i<ALFABETO;i++){
+            if(atual->filhos != nullptr){
+                char letraDaPorta = i+'a';
+                imprimirRecursivamente(atual->filhos[i], palavraAcumulada + letraDaPorta);
+            }
+        }
+    }
+
+    bool removerRecursivamente(){}
+
 public:
     // Construtor: Inicializa a raiz vazia
     Trie() {
@@ -85,6 +105,19 @@ public:
 
         return atual->fim_palavra;
     }
+
+    void remover(const std::string& palavra){
+        removerRecursivamente(root,palavra,0);
+    }        
+
+
+
+    void printar(){
+        std::cout << "Palavras na trie:" << std::endl;
+        imprimirRecursivamente(root,"");
+    }
+
+
 };
 
 int main() {
