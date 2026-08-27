@@ -43,19 +43,65 @@ private:
         }
 
         if(atual->fim_palavra){
-            std::cout << "." << palavraAcumulada << std::endl;
+            std::cout << "-" << palavraAcumulada << std::endl;
         }
 
         for(int i=0;i<ALFABETO;i++){
-            if(atual->filhos != nullptr){
+            if(atual->filhos[i] != nullptr){
                 char letraDaPorta = i+'a';
                 imprimirRecursivamente(atual->filhos[i], palavraAcumulada + letraDaPorta);
             }
         }
     }
 
-    bool removerRecursivamente(){}
-
+// Retorna true se o 'atual' puder ser deletado pelo pai
+    bool removerRecursivamente(trieNo* atual, const std::string& palavra, int profundidade) {
+        
+        // 1. Caso base: chegamos no fundo!
+        if (profundidade == palavra.length()) {
+            if (atual->fim_palavra) {
+                atual->fim_palavra = false;
+            }
+            // Checando se tem filhos (sem cair na armadilha do else!)
+            for (int i = 0; i < ALFABETO; i++) {
+                if (atual->filhos[i] != nullptr) {
+                    return false; // Opa, achei um filho vivo! Não posso morrer.
+                }
+            }
+            
+            // Se o for rodou inteiro e não deu 'return false', 
+            // é porque não tem filhos. Posso morrer!
+            return true; 
+        }
+        // 2. Caminhando para baixo
+        int indice = palavra[profundidade] - 'a';
+        if (atual->filhos[indice] == nullptr) {
+            return false;
+        }
+        // 3. Mergulha!
+        bool filhoAvisouPraApagar = removerRecursivamente(atual->filhos[indice], palavra, profundidade + 1);
+        // 4. Subindo de volta
+        if (filhoAvisouPraApagar) {
+            delete atual->filhos[indice];
+            atual->filhos[indice] = nullptr; 
+            
+            // Será que eu (atual) também me tornei inútil?
+            if (atual->fim_palavra == false) {
+                
+                // Mesma lógica: vamos ver se sobrou algum outro filho vivo
+                for (int i = 0; i < ALFABETO; i++) {
+                    if (atual->filhos[i] != nullptr) {
+                        return false; // Sobrou outro filho, não posso morrer.
+                    }
+                }
+                
+                // Se rodou o for inteiro e não tem mais nenhum filho, morre também!
+                return true; 
+            }
+        }
+        
+        return false;
+    }
 public:
     // Construtor: Inicializa a raiz vazia
     Trie() {
@@ -127,8 +173,13 @@ int main() {
     arvore.inserir("algodao");
     arvore.inserir("arvore");
 
-    std::cout << "Busca 'algoritmo': " << arvore.buscar("algoritmo") << std::endl; // Deve imprimir 1 (true)
-    std::cout << "Busca 'algo': " << arvore.buscar("algo") << std::endl;           // Deve imprimir 0 (false)
+    std::cout << "\n--- ANTES DA REMOCAO ---" << std::endl;
+    arvore.printar(); // Vai imprimir algoritmo, algodao e arvore
 
+    std::cout << "\nRemovendo 'algodao'..." << std::endl;
+    arvore.remover("algodao");
+    
+    std::cout << "\n--- DEPOIS DA REMOCAO ---" << std::endl;
+    arvore.printar(); // Vai imprimir apenas algoritmo e arvore
     return 0;
 }
