@@ -1,0 +1,20 @@
+# Compiled executables
+benchmark
+patricia
+*.out
+*.exe
+*.o
+
+# LaTeX build files
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+*.bbl
+*.blg
+
+# Output/Generated Data
+output/
