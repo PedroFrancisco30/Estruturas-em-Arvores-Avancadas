@@ -1,7 +1,10 @@
 #include <iostream>
 #include <string>
 
+#ifndef ALFABETO_DEFINED
+#define ALFABETO_DEFINED
 const int ALFABETO = 26;
+#endif
 
 struct trieNo {
     trieNo* filhos[ALFABETO];
@@ -166,6 +169,7 @@ public:
 
 };
 
+#ifndef EVAL_BENCHMARK
 int main() {
     Trie arvore;
 
@@ -183,3 +187,4 @@ int main() {
     arvore.printar(); // Vai imprimir apenas algoritmo e arvore
     return 0;
 }
+#endif

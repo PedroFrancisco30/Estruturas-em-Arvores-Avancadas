@@ -2,7 +2,10 @@
 #include <iostream>
 #include <algorithm> // para std::min
 
+#ifndef ALFABETO_DEFINED
+#define ALFABETO_DEFINED
 const int ALFABETO = 26;
+#endif
 
 struct patriciaNo{
     std::string prefixo;
@@ -219,6 +222,7 @@ public:
 };
 
 
+#ifndef EVAL_BENCHMARK
 int main(){
     PatriciaTree arvore;
 
@@ -240,3 +244,4 @@ int main(){
 
     return 0;
 }
+#endif

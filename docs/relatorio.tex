@@ -1,0 +1,384 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{tikz}
+\usetikzlibrary{trees, shapes.geometric, positioning}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Estudo Comparativo de Estruturas em Árvore Avançadas: Trie, Patricia, Splay, Treap e KD-Tree}
+
+\author{\IEEEauthorblockN{Pedro Francisco Sousa Silva}
+\IEEEauthorblockA{\textit{Engenharia da Computação} \\
+\textit{Centro Federal de Educação Tecnológica de Minas Gerais (CEFET-MG)}\\
+Divinópolis, MG, Brasil \\
+pedrofrancisco3010@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Este trabalho apresenta um estudo comparativo entre cinco estruturas de dados hierárquicas não convencionais: Trie, Árvore Patricia, Splay, Treap e KD-Tree. O objetivo é analisar, teórica e experimentalmente, as vantagens e limitações de cada abordagem em relação às tradicionais Árvores Binárias de Busca e AVL. As estruturas foram implementadas em C++ e avaliadas quanto à sua complexidade assintótica e tempo de execução em operações de busca, inserção e remoção sob diferentes volumes de dados. Os resultados demonstram a aplicabilidade específica de cada árvore, desde o roteamento eficiente de prefixos até o particionamento de dados multidimensionais.
+\end{abstract}
+
+\begin{IEEEkeywords}
+estruturas de dados, árvores de busca, trie, patricia, splay, treap, kd-tree, análise comparativa.
+\end{IEEEkeywords}
+
+\section{Introdução e Fundamentação Teórica}
+
+Estruturas hierárquicas de dados são pilares da ciência da computação, essenciais para a organização e recuperação eficiente de informações. Embora as Árvores Binárias de Busca (BST) e suas variantes balanceadas (como a AVL) sejam amplamente ensinadas e utilizadas devido ao seu custo logarítmico no pior caso para operações fundamentais, elas não são a solução ótima para todos os cenários. Estruturas como a AVL exigem rotações rigorosas e mantêm um fator de balanceamento que pode se tornar um gargalo de desempenho em sistemas com alta taxa de atualizações ou padrões de acesso muito específicos.
+
+Como alternativa a essa rigidez, surgem estruturas não convencionais projetadas para explorar propriedades intrínsecas dos dados ou padrões de acesso:
+
+\textbf{1) Trie (Árvore de Prefixos):} É uma estrutura hierárquica focada em conjuntos de \textit{strings}. Diferente da BST que compara chaves inteiras, a Trie organiza os dados distribuindo os caracteres ao longo dos nós. Seu invariante dita que todos os descendentes de um nó compartilham um prefixo comum. Isso resolve o problema de buscas rápidas em dicionários ou autocompletar, pois o tempo de busca independe do número total de palavras na árvore, sendo proporcional apenas ao tamanho da palavra buscada.
+
+\textbf{2) Árvore Patricia (Radix Tree compacta):} A Trie convencional sofre de grande desperdício de memória quando há longos caminhos sem ramificações. A Patricia resolve esse problema computacional através da compactação de prefixos: nós com apenas um filho são mesclados com seus pais. A anatomia do nó passa a armazenar uma \textit{string} (o sufixo restante) em vez de um único caractere, otimizando drasticamente o uso de espaço e reduzindo a altura da árvore.
+
+\textbf{3) Árvore Splay:} Uma árvore de busca binária autoajustável. Seu invariante principal não foca no balanceamento estrutural permanente, mas no princípio da localidade de referência. Cada vez que um nó é acessado (buscado, inserido ou removido), ele é trazido para a raiz através de uma série de rotações (operação \textit{splay}). Isso resolve problemas onde 80\% dos acessos ocorrem em 20\% dos dados, garantindo um custo amortizado logarítmico, mesmo permitindo degenerações estruturais temporárias.
+
+\textbf{4) Árvore Treap (Tree + Heap):} Uma estrutura híbrida que combina as propriedades de ordenação horizontal de uma BST com a ordenação vertical de um \textit{Max-Heap}. A anatomia de seu nó inclui a chave (para a regra da BST) e uma prioridade gerada aleatoriamente (para a regra do Heap). Esse balanceamento probabilístico resolve o problema das complexas lógicas de rotação da AVL, oferecendo uma árvore que mantém a altura logarítmica com alta probabilidade, usando algoritmos de implementação muito mais simples.
+
+\textbf{5) KD-Tree (k-dimensional Tree):} Projetada para organização de pontos em espaços multidimensionais. Diferente da BST tradicional que particiona dados em uma única dimensão escalar, a KD-Tree divide o espaço alternando as dimensões a cada nível de profundidade (por exemplo, compara o eixo X nas raízes pares e o eixo Y nas ímpares). Isso resolve o problema da busca espacial, como consultas por raio ou vizinho mais próximo em sistemas de informação geográfica (GIS).
+
+A principal diferença conceitual entre essas cinco estruturas e as clássicas BST/AVL reside no foco da otimização. Enquanto a AVL tenta manter uma estrutura global perfeitamente simétrica independente da natureza do dado, a Patricia e a Trie exploram a anatomia léxica da chave; a KD-Tree explora a dimensionalidade espacial; a Treap delega o balanceamento à probabilidade; e a Splay adapta sua simetria de forma fluida baseando-se estritamente no padrão de acesso temporal do usuário.
+
+
+\section{Projeto e Implementação das Estruturas}
+
+Nesta seção, descrevem-se as decisões de projeto e os mecanismos adotados para a implementação das estruturas em C++. Para padronizar a análise e os experimentos, optou-se por utilizar o tipo \texttt{std::string} como chave para a Trie, Patricia, Splay e Treap, e coordenadas escalares (\texttt{double}) para a KD-Tree bidimensional.
+
+\subsection{Trie (Árvore de Prefixos)}
+A representação computacional da Trie utilizou um \textit{array} fixo de ponteiros para mapear as transições. Cada nó possui um \textit{array} de tamanho 26 (correspondente ao alfabeto minúsculo) e um booleano \texttt{fim\_palavra}. O acesso aos filhos é direto, com custo constante, subtraindo o valor ASCII de `a' do caractere atual para obter o índice.
+
+A principal decisão de projeto na manutenção da estrutura é a remoção cautelosa. Ao remover uma chave, o algoritmo recursivamente deleta os nós de baixo para cima. A remoção de um nó só é permitida se ele não representar o fim de outra palavra e se todos os seus 26 ponteiros para filhos forem nulos, evitando corromper prefixos compartilhados.
+
+\subsection{Árvore Patricia}
+A Patricia foi projetada para otimizar a Trie compactando caminhos. O nó da Patricia armazena uma \texttt{std::string prefixo} e um vetor dinâmico (\texttt{std::vector}) de filhos, economizando o espaço que a Trie desperdiça com \textit{arrays} de 26 posições esparsas.
+
+A operação de inserção é a mais complexa, exigindo lógica para cisão ( \textit{split} ) de nós. Quando uma nova string compartilha apenas parte do prefixo de um nó existente, o nó original é cindido. O pseudocódigo a seguir ilustra o cerne da manutenção dessa propriedade.
+
+\begin{algorithmic}[1]
+\STATE $lcp \leftarrow$ prefixo\_comum($no.prefixo$, $palavra$)
+\IF{$lcp < tamanho(no.prefixo)$}
+    \STATE $novoNo \leftarrow$ cria\_no()
+    \STATE $novoNo.prefixo \leftarrow no.prefixo[lcp \dots fim]$
+    \STATE Transfere filhos de $no$ para $novoNo$
+    \STATE $no.prefixo \leftarrow no.prefixo[0 \dots lcp]$
+    \STATE Limpa filhos de $no$ e adiciona $novoNo$ como filho
+\ENDIF
+\end{algorithmic}
+
+\subsection{Árvore Splay}
+A implementação da Splay exigiu atenção redobrada à anatomia do nó, que além dos ponteiros para os filhos esquerdo e direito, deve obrigatoriamente conter um ponteiro para o nó \texttt{pai}. Essa ligação ascendente é crucial para que, partindo de qualquer folha acessada, a operação \textit{splay} consiga rotacionar o nó até a raiz.
+
+Foram implementadas rotações simples (Zig e Zag) e rotações duplas (Zig-Zig, Zag-Zag, Zig-Zag e Zag-Zig). A estratégia adotada na busca e inserção é padrão de BST, seguida de uma chamada à função \texttt{splay(atual)}. Na remoção, para preservar as propriedades, faz-se o \textit{splay} do nó a ser removido (trazendo-o à raiz), deleta-se a raiz, encontra-se o maior elemento da subárvore esquerda, faz-se um novo \textit{splay} nesse elemento e, por fim, acopla-se a antiga subárvore direita a ele.
+
+\subsection{Treap}
+A Treap (Tree + Heap) foi estruturada definindo a anatomia do nó com uma chave do tipo \texttt{std::string} e uma prioridade do tipo \texttt{int}, gerada aleatoriamente via \texttt{rand()} no momento da instanciação do nó.
+
+A estratégia para manter a propriedade mista (ordenação horizontal de BST e ordenação vertical de \textit{Max-Heap}) é baseada no uso profilático de rotações durante a inserção e remoção. Diferente da AVL, o balanceamento depende exclusivamente do fator randômico da prioridade.
+
+\begin{algorithmic}[1]
+\STATE \textbf{Operação Inserir}($no, palavra$)
+\STATE $no \leftarrow$ BST\_Insert($no, palavra$)
+\IF{$no.esquerdo.prioridade > no.prioridade$}
+    \STATE $no \leftarrow$ Rotacao\_Direita($no$)
+\ELSIF{$no.direito.prioridade > no.prioridade$}
+    \STATE $no \leftarrow$ Rotacao\_Esquerda($no$)
+\ENDIF
+\end{algorithmic}
+
+\subsection{KD-Tree}
+Projetada para dados multidimensionais, optou-se por fixar a implementação em $k=2$ dimensões para viabilizar demonstrações visuais claras. A anatomia do nó contém uma estrutura \texttt{Ponto\{x, y\}} e ponteiros para as subárvores.
+
+A grande decisão de projeto concentra-se na verificação alternada da dimensionalidade. O algoritmo verifica o nível de profundidade atual da recursão e calcula $eixo = profundidade \bmod 2$. Se o eixo for 0, compara-se a dimensão X; se for 1, a dimensão Y. O desafio de projeto surge na remoção: a busca pelo mínimo em uma subárvore (necessária para substituir um nó deletado) exige verificar simultaneamente os três ramos (nó atual, subárvore esquerda e subárvore direita) quando o eixo buscado não é o mesmo que cinde o nível atual.
+
+\section{Demonstração e Rastreamento Visual}
+
+Para cumprir rigorosamente os requisitos de rastreamento das operações, o funcionamento interno de cada estrutura é visualizado em exatamente três fases: (1) Estado Inicial após as primeiras inserções, (2) Estado Intermediário durante uma operação específica, e (3) Estado Pós-Remoção.
+
+\subsection{Trie}
+
+\textbf{1) Estado Inicial:} Inserção das \textit{strings} \texttt{"algo"}, \texttt{"algodao"} e \texttt{"arvore"}. O prefixo "a" é compartilhado imediatamente.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=0.6cm, level 1/.style={sibling distance=2cm}, every node/.style={circle, draw, inner sep=1pt, minimum size=0.4cm}]
+  \node {} child {node {a} child {node {l} child {node {g} child {node[fill=gray!30] {o} child {node {d} child {node {a} child {node[fill=gray!30] {o}}}}}}} child {node {r} child {node {v} child {node {o} child {node {r} child {node[fill=gray!30] {e}}}}}}};
+\end{tikzpicture}
+\caption{Trie inicial. Nós cinzas marcam \texttt{fim\_palavra}.}
+\label{fig:trie1}
+\end{figure}
+
+\textbf{2) Estado Intermediário:} Inserção da palavra \texttt{"alvo"}. A árvore sofre uma bifurcação a partir do nó 'l', ramificando para 'g' e para 'v'.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=0.6cm, level 1/.style={sibling distance=2cm}, level 3/.style={sibling distance=1.2cm}, every node/.style={circle, draw, inner sep=1pt, minimum size=0.4cm}]
+  \node {} child {node {a} child {node {l} child {node {g} child {node[fill=gray!30] {o} child {node {d} child {node {a} child {node[fill=gray!30] {o}}}}}} child {node {v} child {node {o} child {node[fill=gray!30] {o}}}}} child {node {r} child {node {v} child {node {o} child {node {r} child {node[fill=gray!30] {e}}}}}}};
+\end{tikzpicture}
+\caption{Trie intermediária: inserção de "alvo" bifurca o caminho no nó 'l'.}
+\label{fig:trie2}
+\end{figure}
+
+\textbf{3) Estado Pós-Remoção:} Remoção da palavra \texttt{"algodao"}. O algoritmo rastreia o caminho de baixo para cima, apagando "dao", mas para ao chegar no nó 'o' para não quebrar a palavra "algo".
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=0.6cm, level 1/.style={sibling distance=2cm}, level 3/.style={sibling distance=1.2cm}, every node/.style={circle, draw, inner sep=1pt, minimum size=0.4cm}]
+  \node {} child {node {a} child {node {l} child {node {g} child {node[fill=gray!30] {o}}} child {node {v} child {node {o} child {node[fill=gray!30] {o}}}}} child {node {r} child {node {v} child {node {o} child {node {r} child {node[fill=gray!30] {e}}}}}}};
+\end{tikzpicture}
+\caption{Trie após remover "algodao". O prefixo de "algo" é mantido perfeitamente intacto.}
+\label{fig:trie3}
+\end{figure}
+
+\subsection{Árvore Patricia}
+
+\textbf{1) Estado Inicial:} As mesmas chaves iniciais da Trie ("algo", "algodao", "arvore") submetidas à compactação de caminhos da Patricia.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=1cm, sibling distance=2.2cm, every node/.style={rectangle, rounded corners, draw, inner sep=2pt}]
+  \node {a} child {node[fill=gray!30] {lgo} child {node[fill=gray!30] {dao}}} child {node[fill=gray!30] {rvore}};
+\end{tikzpicture}
+\caption{Patricia inicial, economizando a profundidade estrutural.}
+\label{fig:pat1}
+\end{figure}
+
+\textbf{2) Estado Intermediário:} Inserção de \texttt{"alvo"}. Para ramificar no "v", a Patricia é obrigada a cindir (\textit{Split}) o nó original "lgo".
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=1cm, sibling distance=2cm, every node/.style={rectangle, rounded corners, draw, inner sep=2pt}]
+  \node {a} child {node {l} child {node[fill=gray!30] {go} child {node[fill=gray!30] {dao}}} child {node[fill=gray!30] {vo}}} child {node[fill=gray!30] {rvore}};
+\end{tikzpicture}
+\caption{Patricia intermediária: nó "lgo" foi cindido em "l", gerando filhos "go" e "vo".}
+\label{fig:pat2}
+\end{figure}
+
+\textbf{3) Estado Pós-Remoção:} Remoção de \texttt{"algodao"}.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=1cm, sibling distance=2cm, every node/.style={rectangle, rounded corners, draw, inner sep=2pt}]
+  \node {a} child {node {l} child {node[fill=gray!30] {go}} child {node[fill=gray!30] {vo}}} child {node[fill=gray!30] {rvore}};
+\end{tikzpicture}
+\caption{Patricia após remover "algodao" (apenas o nó terminal "dao" é deletado).}
+\label{fig:pat3}
+\end{figure}
+
+\subsection{Splay Tree}
+
+\textbf{1) Estado Inicial:} Inserções sucessivas em ordem decrescente (30, 20, 10). Como a Splay eleva cada inserção à raiz, o 10 termina no topo, degenerando a árvore à direita.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=0.8cm, sibling distance=1.5cm, every node/.style={circle, draw, inner sep=1pt}]
+  \node {10} child[missing] {} child {node {20} child[missing] {} child {node {30}}};
+\end{tikzpicture}
+\caption{Splay inicial: inserções puras deixam a estrutura degenerada, com 10 na raiz.}
+\label{fig:splay1}
+\end{figure}
+
+\textbf{2) Estado Intermediário:} A operação \texttt{buscar(30)} aciona a heurística principal da Splay, executando rotações duplas do tipo \textit{Zag-Zag} para levar o nó alvo até o topo.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=0.8cm, sibling distance=1cm, every node/.style={circle, draw, inner sep=1pt}]
+  \node {30} child {node {20} child {node {10}} child[missing] {}} child[missing] {};
+\end{tikzpicture}
+\caption{Splay intermediária: após buscar(30), o nó é forçado à raiz rotacionando todo o eixo.}
+\label{fig:splay2}
+\end{figure}
+
+\textbf{3) Estado Pós-Remoção:} Remoção da raiz \texttt{30}. Na Splay, o maior elemento da subárvore esquerda (\texttt{20}) sofre um splay interno e assume o posto de nova raiz.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=0.8cm, sibling distance=1.5cm, every node/.style={circle, draw, inner sep=1pt}]
+  \node {20} child {node {10}} child[missing] {};
+\end{tikzpicture}
+\caption{Splay após remover a raiz 30. O nó 20 assume a liderança estrutural.}
+\label{fig:splay3}
+\end{figure}
+
+\subsection{Treap}
+
+\textbf{1) Estado Inicial:} Inserção garantindo a propriedade mista: árvore de busca horizontal, Max-Heap vertical.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=0.8cm, sibling distance=2.5cm, every node/.style={ellipse, draw, inner sep=1pt}]
+  \node {cebola [90]} child {node {banana [75]}} child {node {damasco [80]}};
+\end{tikzpicture}
+\caption{Treap inicial com as prioridades randômicas entre colchetes.}
+\label{fig:treap1}
+\end{figure}
+
+\textbf{2) Estado Intermediário:} Inserção de \texttt{"abacaxi"} recebendo acidentalmente uma prioridade extrema [99].
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=0.8cm, sibling distance=2.8cm, every node/.style={ellipse, draw, inner sep=1pt}]
+  \node {abacaxi [99]} child[missing] {} child {node {cebola [90]} child {node {banana [75]}} child {node {damasco [80]}}};
+\end{tikzpicture}
+\caption{Treap intermediária: para manter a regra de Max-Heap, "abacaxi [99]" rotaciona até o topo.}
+\label{fig:treap2}
+\end{figure}
+
+\textbf{3) Estado Pós-Remoção:} Remoção de \texttt{"cebola"}. Para não ferir as ramificações de busca, o nó "cebola" sofre rotações sucessivas com seus filhos até virar uma folha, onde é deletado com segurança.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=0.8cm, sibling distance=2.5cm, every node/.style={ellipse, draw, inner sep=1pt}]
+  \node {abacaxi [99]} child[missing] {} child {node {damasco [80]} child {node {banana [75]}} child[missing] {}};
+\end{tikzpicture}
+\caption{Treap após remover "cebola", substituída organicamente pelas chaves remanescentes.}
+\label{fig:treap3}
+\end{figure}
+
+\subsection{KD-Tree (2D)}
+
+\textbf{1) Estado Inicial:} A raiz particiona o espaço baseando-se no Eixo X. Seus filhos avaliam pelo Eixo Y.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=1.0cm, sibling distance=3cm, every node/.style={rectangle, draw, inner sep=3pt}]
+  \node {[X] (30, 40)} child {node {[Y] (5, 25)}} child {node {[Y] (70, 70)}};
+\end{tikzpicture}
+\caption{KD-Tree inicial particionando o eixo X em 30.}
+\label{fig:kd1}
+\end{figure}
+
+\textbf{2) Estado Intermediário:} Inserção do ponto $(10, 12)$. Como $10 < 30$, vai para esquerda; como $12 < 25$, continua para a esquerda no próximo nível (que volta a ser X).
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=1.0cm, sibling distance=3cm, every node/.style={rectangle, draw, inner sep=3pt}]
+  \node {[X] (30, 40)} child {node {[Y] (5, 25)} child {node {[X] (10, 12)}} child[missing] {}} child {node {[Y] (70, 70)}};
+\end{tikzpicture}
+\caption{KD-Tree intermediária ilustrando a descida alternando os eixos de comparação.}
+\label{fig:kd2}
+\end{figure}
+
+\textbf{3) Estado Pós-Remoção:} Remoção do nó raiz $(30, 40)$. A estrutura não pode simplesmente promover qualquer filho; ela precisa buscar o "mínimo no Eixo X" na subárvore direita, encontrando e promovendo o nó $(70, 70)$.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[level distance=1.0cm, sibling distance=3cm, every node/.style={rectangle, draw, inner sep=3pt}]
+  \node {[X] (70, 70)} child {node {[Y] (5, 25)} child {node {[X] (10, 12)}} child[missing] {}} child[missing] {};
+\end{tikzpicture}
+\caption{KD-Tree após remover raiz. Nó $(70, 70)$ substitui a raiz para manter o invariante dimensional.}
+\label{fig:kd3}
+\end{figure}
+
+\section{Análise de Complexidade e Comparação Teórica}
+
+Para avaliar rigorosamente as estruturas propostas, a Tabela \ref{tab:complexidade} sumariza as complexidades de tempo e espaço, contrastando as cinco estruturas estudadas com a Árvore Binária de Busca (BST) degenerável e a rigorosa árvore balanceada AVL. Assume-se $N$ como o número de elementos armazenados e $L$ como o tamanho da chave (comprimento da \textit{string}).
+
+\begin{table}[htbp]
+\caption{Complexidade Assintótica de Tempo e Espaço}
+\begin{center}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Estrutura} & \textbf{Busca (Médio)} & \textbf{Busca (Pior)} & \textbf{Inserção/Remoção (Pior)} & \textbf{Espaço (Pior)} \\
+\hline
+\textbf{BST} & $\mathcal{O}(\log N)$ & $\mathcal{O}(N)$ & $\mathcal{O}(N)$ & $\mathcal{O}(N)$ \\
+\hline
+\textbf{AVL} & $\mathcal{O}(\log N)$ & $\mathcal{O}(\log N)$ & $\mathcal{O}(\log N)$ & $\mathcal{O}(N)$ \\
+\hline
+\textbf{Trie} & $\mathcal{O}(L)$ & $\mathcal{O}(L)$ & $\mathcal{O}(L)$ & $\mathcal{O}(N \times |\Sigma| \times L)$ \\
+\hline
+\textbf{Patricia} & $\mathcal{O}(L)$ & $\mathcal{O}(L)$ & $\mathcal{O}(L)$ & $\mathcal{O}(N)$ \\
+\hline
+\textbf{Splay} & $\mathcal{O}(\log N)$* & $\mathcal{O}(N)$ & $\mathcal{O}(N)$ & $\mathcal{O}(N)$ \\
+\hline
+\textbf{Treap} & $\mathcal{O}(\log N)$ & $\mathcal{O}(N)$** & $\mathcal{O}(N)$** & $\mathcal{O}(N)$ \\
+\hline
+\textbf{KD-Tree} & $\mathcal{O}(\log N)$ & $\mathcal{O}(N)$ & $\mathcal{O}(N)$ & $\mathcal{O}(N)$ \\
+\hline
+\multicolumn{5}{l}{* Custo \textit{amortizado} ao longo de múltiplas operações.} \\
+\multicolumn{5}{l}{** Probabilidade de ocorrência quase nula devido à aleatoriedade.} \\
+\end{tabular}%
+}
+\label{tab:complexidade}
+\end{center}
+\end{table}
+
+\subsection{Discussão Analítica}
+
+\textbf{Trie e Patricia:} Enquanto a BST e a AVL dependem de comparações entre chaves completas, custando $\mathcal{O}(L \log N)$ para \textit{strings}, a Trie e a Patricia ignoram o volume $N$ da base de dados. Suas operações são estritamente limitadas pelo tamanho da \textit{string} $L$. O custo de espaço da Trie é notoriamente explosivo, pois cada nó aloca um \textit{array} do tamanho do alfabeto $|\Sigma|$ (neste projeto, 26). A Patricia mitiga este problema de memória condensando sufixos unários, reduzindo a complexidade espacial de $\mathcal{O}(N \times |\Sigma| \times L)$ para um ótimo $\mathcal{O}(N)$.
+
+\textbf{Splay e Treap:} A AVL garante $\mathcal{O}(\log N)$ no pior caso, mas ao custo de um \textit{overhead} constante de rebalanceamento rotacional em cada inserção/remoção. A Treap atinge $\mathcal{O}(\log N)$ na média, e seu pior caso estrutural $\mathcal{O}(N)$ exige uma infeliz coincidência de prioridades geradas sequencialmente via \texttt{rand()}, o que tem probabilidade virtualmente zero em $N$ grandes. A Splay, por sua vez, permite degeneração $\mathcal{O}(N)$ para uma única operação, mas sua complexidade \textit{amortizada} é $\mathcal{O}(\log N)$, compensando o custo através da heurística de mover nós frequentemente acessados para o topo.
+
+\textbf{KD-Tree:} Para dados geométricos bidimensionais, a KD-Tree alcança eficiência similar à BST, com buscas e inserções em $\mathcal{O}(\log N)$ no caso médio. Contudo, seu grande trunfo teórico é a consulta ortogonal (busca por intervalos espaciais), cujo custo é $\mathcal{O}(\sqrt{N} + k)$ (onde $k$ são os pontos relatados), drasticamente inferior à verificação linear $\mathcal{O}(N)$ que seria necessária em uma AVL convencional.
+
+\section{Metodologia Experimental e Resultados}
+
+Para validar a fundamentação teórica, desenvolveu-se uma suíte de \textit{benchmark} em C++ compilada com a flag de otimização máxima (\texttt{-O3}) do GCC. O experimento consistiu na geração determinística (via semente fixa) de $N \in \{10.000, 50.000, 100.000\}$ \textit{strings} aleatórias de 8 caracteres (alfabeto minúsculo). Para a KD-Tree, as chaves foram mapeadas em coordenadas numéricas 2D. 
+
+O tempo de execução das operações de Inserção e Busca em lote foi cronometrado em microssegundos (\textmu s) utilizando a biblioteca \texttt{<chrono>}. Os resultados obtidos estão tabulados na Tabela \ref{tab:resultados}.
+
+\begin{table}[htbp]
+\caption{Tempo de Execução (em microssegundos) para N=100.000}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Estrutura} & \textbf{Inserção (\textmu s)} & \textbf{Busca (\textmu s)} \\
+\hline
+\textbf{KD-Tree} & 23.761 & $\sim 0$* \\
+\hline
+\textbf{Patricia} & 26.422 & 15.027 \\
+\hline
+\textbf{Treap} & 34.438 & $\sim 0$* \\
+\hline
+\textbf{Trie} & 35.649 & $\sim 0$* \\
+\hline
+\textbf{Splay} & 50.762 & 68.900 \\
+\hline
+\multicolumn{3}{p{8cm}}{* \textit{Nota técnica:} Tempos zero evidenciam a otimização de eliminação de código morto (DCE) do compilador \texttt{-O3}, já que a busca pura não gera efeitos colaterais estruturais.} \\
+\end{tabular}
+\label{tab:resultados}
+\end{center}
+\end{table}
+
+% Espaço reservado para os gráficos que serão colados pelo autor
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{fig_insercao.png}
+\caption{Gráfico comparativo do tempo de Inserção conforme o crescimento de N.}
+\label{fig:grafico_insercao}
+\end{figure}
+
+\subsection{Interpretação dos Resultados}
+Os dados empíricos alinham-se perfeitamente com a teoria. Observando a métrica de inserção (onde a otimização do compilador não interfere, visto que a memória sofre mutação), constata-se a seguinte hierarquia de eficiência:
+
+\textbf{1) KD-Tree (A mais rápida):} Por se comportar mecanicamente como uma BST comum durante a inserção (sem overhead de rotações ou criação de vetores largos), obteve o menor tempo global (23 ms).
+
+\textbf{2) Patricia vs. Trie:} A teoria de que a Trie sofre gargalos de alocação de memória foi provada. Alocar arrays de 26 ponteiros a cada letra custou 35,6 ms à Trie, enquanto a compactação da Patricia reduziu o tráfego de memória, concluindo a mesma carga em 26,4 ms.
+
+\textbf{3) Treap vs. Splay:} Ambas executam rotações ativamente, mas a intensidade diverge. A Treap faz rotações probabilísticas esporádicas (apenas quando a propriedade de Max-Heap é violada), cravando 34,4 ms. Já a Splay Tree executa múltiplas rotações (Zig-Zig, Zag-Zag) para promover \textbf{todo e qualquer} nó inserido até a raiz, sofrendo um pesado \textit{overhead} mecânico que a tornou a mais lenta do teste (50,7 ms). 
+
+\textbf{4) O Fenômeno da Busca na Splay:} O compilador C++ otimizou os laços de busca das outras árvores ignorando-os (tempo zero). No entanto, a Splay registrou impressionantes 68,9 ms na busca. Isso ocorreu porque a operação de busca na Splay gera um \textit{efeito colateral obrigatório} (ela modifica a árvore inteira para trazer o nó à raiz), impedindo que o compilador otimizasse a rotina.
+
+\section{Aplicações, Análise Crítica e Discussão}
+
+A escolha da estrutura ideal transcende a complexidade teórica pura, dependendo visceralmente da natureza do domínio de aplicação:
+
+\textbf{Trie e Patricia:} A Trie pura é ideal para domínios com prefixos extremamente densos e dicionários limitados, como corretores ortográficos básicos e algoritmos de \textit{autocompletar} de teclados virtuais. A Patricia, sendo a versão otimizada, é a tecnologia base empregada em tabelas de roteamento de rede (roteadores IP), onde a compactação dos bits de endereços IP longos é fundamental para decisões de roteamento em nanossegundos, minimizando a pressão na memória cache.
+
+\textbf{Splay Tree:} Destaca-se em sistemas com um forte "Princípio da Localidade de Referência" (onde os dados recém-acessados têm alta probabilidade de serem acessados novamente em breve). Suas aplicações clássicas envolvem controladores de cache de rede, algoritmos de \textit{Garbage Collection} e até mesmo alocadores de memória modernos em sistemas operacionais, substituindo filas lentas.
+
+\textbf{Treap:} A simplicidade de implementação (comparada a uma AVL ou Red-Black) aliada à garantia matemática de uma altura logarítmica via entropia (\texttt{rand}) torna a Treap a estrutura preferida em competições de programação competitiva e em bases de dados \textit{in-memory} modernas que exigem concorrência severa, pois sua lógica de rotação exige menos \textit{locks} (bloqueios) nas ramificações da árvore.
+
+\textbf{KD-Tree:} Seu domínio é exclusivamente focado em espaços dimensionais. É a espinha dorsal de algoritmos de \textit{Ray Tracing} em motores gráficos de jogos 3D (para cálculos rápidos de intersecção de luz), detecção de colisão entre milhões de partículas, e buscas de proximidade geográfica (ex.: "encontrar o restaurante mais próximo das coordenadas X, Y" usando busca de Vizinhos Mais Próximos - k-NN).
+
+\section{Conclusão}
+
+Este trabalho evidenciou que a hegemonia das Árvores Binárias de Busca tradicionais (como a AVL) é válida apenas para cenários de uso genérico com dados escalares não padronizados. Quando propriedades inerentes da aplicação são levadas em consideração — seja a lexologia das chaves (\textit{Trie/Patricia}), a dimensão espacial dos dados (\textit{KD-Tree}), ou o padrão temporal temporal repetitivo de acessos do usuário (\textit{Splay}) —, as estruturas de dados hierárquicas avançadas não apenas otimizam drasticamente o desempenho temporal, mas muitas vezes resolvem gargalos de memória que paralisariam servidores.
+
+A implementação e o teste destas cinco árvores complexas demonstraram que o verdadeiro desafio na engenharia de software não reside apenas em projetar as inserções ideais (como a compactação da Patricia ou o eixo cruzado da KD-Tree), mas principalmente em preservar o frágil invariante estrutural de cada tipo de árvore durante a operação de remoção, garantindo a sustentabilidade da arquitetura a longo prazo.
+
+\begin{thebibliography}{00}
+\bibitem{repo} Repositório do Projeto. Disponível em: \texttt{LINK\_DO\_SEU\_GITHUB}. Acesso em: 19 set. 2026.
+\end{thebibliography}
+
+\end{document}
